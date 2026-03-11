@@ -1,0 +1,260 @@
+.vault-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vault-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.vault-toolbar h2 {
+  margin: 0;
+  color: #1e2f6e;
+}
+
+.wallet-display {
+  font-size: 13px;
+  color: #30458f;
+  background: #eef2ff;
+  padding: 8px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.vault-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 180px 180px auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.vault-controls input,
+.vault-controls select,
+.modal-card input,
+.modal-card select {
+  border: 1px solid #d7def7;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.vault-controls input:focus,
+.vault-controls select:focus,
+.modal-card input:focus,
+.modal-card select:focus {
+  border-color: #356ef0;
+  box-shadow: 0 0 0 3px rgba(53, 110, 240, 0.18);
+}
+
+.vault-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vault-section h3 {
+  margin: 0;
+  color: #23356f;
+}
+
+.vault-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.file-card,
+.empty-card {
+  background: #ffffff;
+  border: 1px solid #dae4ff;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.file-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.file-card h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #1c2b5d;
+}
+
+.status-badge {
+  font-size: 12px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-weight: 600;
+}
+
+.status-badge.success {
+  background: #e7f8ee;
+  color: #1f7f44;
+}
+
+.status-badge.pending {
+  background: #fff6df;
+  color: #9e6c00;
+}
+
+.status-badge.failed {
+  background: #fde9e9;
+  color: #b33636;
+}
+
+.meta-line {
+  margin: 8px 0 0;
+  color: #4c5c8a;
+  font-size: 13px;
+}
+
+.file-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.file-actions .secondary-button,
+.file-actions .primary-button {
+  text-decoration: none;
+  text-align: center;
+  width: 100%;
+}
+
+.secondary-button.danger {
+  border-color: #f1b3b3;
+  background: #fff3f3;
+  color: #9f2a2a;
+}
+
+.empty-card {
+  color: #6f7ea9;
+  font-size: 13px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 15, 41, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 20;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 540px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-card {
+  max-width: 760px;
+}
+
+.modal-card h3 {
+  margin: 0;
+  color: #1e2f6e;
+}
+
+.modal-card p {
+  margin: 0;
+  color: #4d5d8b;
+}
+
+.dropzone {
+  border: 1px dashed #95acef;
+  border-radius: 10px;
+  background: #f7f9ff;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dropzone span {
+  font-size: 13px;
+  color: #415385;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.preview-image {
+  width: 100%;
+  max-height: 68vh;
+  object-fit: contain;
+  border: 1px solid #d7def7;
+  border-radius: 10px;
+}
+
+.preview-frame {
+  width: 100%;
+  min-height: 68vh;
+  border: 1px solid #d7def7;
+  border-radius: 10px;
+}
+
+.audit-trail {
+  margin-top: 10px;
+  border-top: 1px dashed #dbe4ff;
+  padding-top: 8px;
+}
+
+.audit-trail summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: #2c4388;
+}
+
+.audit-trail ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.audit-trail li {
+  font-size: 12px;
+  color: #465888;
+  margin: 4px 0;
+}
+
+@media (max-width: 1100px) {
+  .vault-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .vault-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .vault-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .file-actions {
+    grid-template-columns: 1fr;
+  }
+}
