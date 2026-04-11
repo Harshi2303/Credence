@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 
 const jwt = require("jsonwebtoken");
@@ -10,8 +11,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = 5000;
-const JWT_SECRET = "your_super_secret_key";
+const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || "your_super_secret_key";
 
 // Mock database
 const users = [];
@@ -68,15 +69,38 @@ app.post("/upload", authenticate, upload.single("document"), (req, res) => {
   const hash = crypto.createHash("sha256").update(req.file.buffer).digest("hex");
 
   // Save in documents array
-  documents.push({
+  const user = users.find((u) => u.id === req.userId);
+  const newDoc = {
     userId: req.userId,
+    uploadedBy: user ? user.username : "Unknown",
     filename: req.file.originalname,
     hash,
     uploadedAt: new Date(),
-  });
+    timestamp: new Date().getTime(), // for ReviewerDashboard
+  };
+  documents.push(newDoc);
 
   // Do NOT send hash to user
-  res.json({ message: "File uploaded and hash stored securely" });
+  res.json({ message: "File uploaded and hash stored securely", doc: newDoc });
+});
+
+// ---------------- List Documents ----------------
+app.get("/documents", (req, res) => {
+  // In a real app, we might filter by role or user
+  res.json(documents);
+});
+
+// ---------------- Verify Document ----------------
+app.post("/api/documents/verify", (req, res) => {
+  const { hash } = req.body;
+  if (!hash) return res.status(400).json({ error: "Hash is required" });
+
+  const doc = documents.find((d) => d.hash === hash);
+  if (doc) {
+    res.json({ verified: true, uploadedAt: doc.uploadedAt });
+  } else {
+    res.json({ verified: false });
+  }
 });
 
 // ---------------- Share ----------------

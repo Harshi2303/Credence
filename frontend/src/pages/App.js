@@ -192,7 +192,7 @@ function App() {
     return `ID ${activeUser.id}`;
   };
 
-  const handleVerifierCheck = () => {
+  const handleVerifierCheck = async () => {
     clearMessages();
     clearDashboardMessages();
     const query = verifierHash.trim().toLowerCase();
@@ -200,17 +200,53 @@ function App() {
       setErrorMessage("Enter a hash to verify.");
       return;
     }
-    const docs = getStoredDocuments();
-    const match = docs.find((doc) => doc.hash.toLowerCase() === query);
-    if (!match) {
-      setVerifierResult("Verification result: Hash not found on-chain (placeholder lookup).");
-      return;
+
+    try {
+      // 1. Check backend first
+      const res = await fetch("http://localhost:5000/api/documents/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hash: query }),
+      });
+      const data = await res.json();
+
+      if (data.verified) {
+        setVerifierResult(
+          `Verification result: VALID (Verified on Backend) | Time: ${new Date(
+            data.uploadedAt
+          ).toLocaleString()}`
+        );
+        return;
+      }
+
+      // 2. Fallback to local storage (for documents not yet synced or dev mode)
+      const docs = getStoredDocuments();
+      const match = docs.find((doc) => doc.hash.toLowerCase() === query);
+      if (!match) {
+        setVerifierResult("Verification result: Hash not found on-chain or backend.");
+        return;
+      }
+      setVerifierResult(
+        `Verification result: VALID (Local Vault) | File: ${match.fileName} | Owner: ${match.ownerName} | Time: ${new Date(
+          match.createdAt
+        ).toLocaleString()}`
+      );
+    } catch (error) {
+      console.error("Verification error:", error);
+      setErrorMessage("Backend verification service unavailable. Checking local vault...");
+
+      const docs = getStoredDocuments();
+      const match = docs.find((doc) => doc.hash.toLowerCase() === query);
+      if (match) {
+        setVerifierResult(
+          `Verification result: VALID (Local Fallback) | File: ${match.fileName} | Time: ${new Date(
+            match.createdAt
+          ).toLocaleString()}`
+        );
+      } else {
+        setVerifierResult("Verification result: Hash not found.");
+      }
     }
-    setVerifierResult(
-      `Verification result: VALID | File: ${match.fileName} | Owner: ${match.ownerName} | Time: ${new Date(
-        match.createdAt
-      ).toLocaleString()}`
-    );
   };
 
   if (activeUser) {
