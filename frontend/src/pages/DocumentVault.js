@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import "./DocumentVault.css";
 
 const DOCUMENTS_KEY = "credence_documents";
-const CATEGORIES = ["Academic", "Financial", "Identity", "Healthcare"];
+const CATEGORIES = ["Academic", "Financial", "Identity", "Healthcare", "Aadhar", "PAN", "Voter", "Driving License", "Passport"];
+
+
 const STATUS_OPTIONS = ["All Statuses", "Active", "Revoked", "Processing"];
 const CHAIN_EXPLORER = {
   "0x1": "https://etherscan.io",
@@ -201,6 +203,14 @@ function DocumentVault({ activeUser, walletDisplay, onBack }) {
       const txHash = makeTxHash();
       const now = new Date().toISOString();
       const docId = `doc_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+      // Sync with Backend for Verification Registry
+      const formData = new FormData();
+      formData.append("document", uploadForm.file);
+      formData.append("category", uploadForm.category);
+      await axios.post("http://localhost:5000/api/documents/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
       const doc = {
         id: docId,
         displayName: uploadForm.displayName.trim() || uploadForm.file.name,
@@ -223,6 +233,7 @@ function DocumentVault({ activeUser, walletDisplay, onBack }) {
           createAudit("CREATED", { txHash, cid: ipfs.cid, hash: fileHash, version: 1, category: uploadForm.category }),
         ],
       };
+
       persistDocs([doc, ...documents]);
       setMessage("Upload complete: hash stored, IPFS CID created, and on-chain transaction simulated.");
       setUploadForm({ file: null, category: "Academic", displayName: "", tag: "" });

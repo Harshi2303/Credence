@@ -1,11 +1,12 @@
 require("dotenv").config();
 const express = require("express");
-
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
-const multer = require("multer");
-const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
+const { users, documents } = require("./storage");
+const documentRoutes = require("./routes/documentRoutes");
+const kycRoutes = require("./routes/kycRoutes");
+
 
 const app = express();
 app.use(cors());
@@ -14,12 +15,10 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_super_secret_key";
 
-// Mock database
-const users = [];
-const documents = [];
+// Mount Modular Routes
+app.use("/api/documents", documentRoutes);
+app.use("/api/kyc", kycRoutes);
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
 // ---------------- Signup ----------------
 app.post("/signup", async (req, res) => {
@@ -44,7 +43,7 @@ app.post("/login", async (req, res) => {
   if (!valid) return res.status(400).json({ message: "Invalid username/password" });
 
   const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "2h" });
-  res.json({ token });
+  res.json({ token, user: { id: user.id, username: user.username } });
 });
 
 // Middleware to verify token
@@ -62,48 +61,16 @@ const authenticate = (req, res, next) => {
   }
 };
 
-// ---------------- Upload ----------------
-app.post("/upload", authenticate, upload.single("document"), (req, res) => {
-  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-
-  const hash = crypto.createHash("sha256").update(req.file.buffer).digest("hex");
-
-  // Save in documents array
-  const user = users.find((u) => u.id === req.userId);
-  const newDoc = {
-    userId: req.userId,
-    uploadedBy: user ? user.username : "Unknown",
-    filename: req.file.originalname,
-    hash,
-    uploadedAt: new Date(),
-    timestamp: new Date().getTime(), // for ReviewerDashboard
-  };
-  documents.push(newDoc);
-
-  // Do NOT send hash to user
-  res.json({ message: "File uploaded and hash stored securely", doc: newDoc });
-});
-
-// ---------------- List Documents ----------------
-app.get("/documents", (req, res) => {
-  // In a real app, we might filter by role or user
-  res.json(documents);
-});
-
-// ---------------- Verify Document ----------------
-app.post("/api/documents/verify", (req, res) => {
-  const { hash } = req.body;
-  if (!hash) return res.status(400).json({ error: "Hash is required" });
-
-  const doc = documents.find((d) => d.hash === hash);
-  if (doc) {
-    res.json({ verified: true, uploadedAt: doc.uploadedAt });
-  } else {
-    res.json({ verified: false });
-  }
+// ---------------- Legacy Upload (Refactored to use storage) ----------------
+// Maintaining for compatibility if needed, but redirects to the logic in documentRoutes
+app.post("/upload", authenticate, (req, res) => {
+  // Logic is now primarily in /api/documents/upload, 
+  // but we can proxy or redirect if existing frontend calls this.
+  res.status(400).json({ message: "Please use /api/documents/upload" });
 });
 
 // ---------------- Share ----------------
+const crypto = require("crypto");
 app.post("/api/share", (req, res) => {
   try {
     const { cid, hash, docId, owner } = req.body || {};
@@ -115,7 +82,7 @@ app.post("/api/share", (req, res) => {
     const expiresAt = Date.now() + 30 * 60 * 1000;
     const shareUrl = `http://localhost:3000/shared?doc=${encodeURIComponent(
       docId || hash || cid
-    )}&cid=${encodeURIComponent(cid || "")}&owner=${encodeURIComponent(owner || "")}&token=${token}&exp=${expiresAt}`;
+    )}&token=${token}&exp=${expiresAt}`;
 
     return res.status(200).json({
       shareUrl,
@@ -126,15 +93,6 @@ app.post("/api/share", (req, res) => {
     console.error("Share route failed:", error);
     return res.status(503).json({ error: "Sharing service temporarily unavailable" });
   }
-});
-
-// Global safety net: avoid empty responses on uncaught route errors
-app.use((error, req, res, next) => {
-  console.error("Unhandled server error:", error);
-  if (res.headersSent) {
-    return next(error);
-  }
-  return res.status(500).json({ error: "Internal server error" });
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

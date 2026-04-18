@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import axios from "axios";
-
-
 import {
   Box,
   Button,
@@ -10,40 +8,57 @@ import {
   LinearProgress,
   IconButton,
   Tooltip,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
-function UploadPage({ token, onLogout }) {
+function UploadPage({ token }) {
   const [file, setFile] = useState(null);
   const [hash, setHash] = useState("");
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleFileChange = (e) => setFile(e.target.files[0]);
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+    setSuccess(false);
+    setHash("");
+  };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!file) return alert("Please select a file");
     setLoading(true);
+    setError("");
 
     const formData = new FormData();
     formData.append("document", file);
 
-    axios.post("http://localhost:5000/upload", formData, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => {
-      // success message only
-    })
-    .catch((err) => console.error(err))
-    .finally(() => setLoading(false));
-        
+    try {
+      const res = await axios.post("http://localhost:5000/api/documents/upload", formData, {
+        headers: { 
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "multipart/form-data" 
+        },
+      });
+      setHash(res.data.documentHash);
+      setSuccess(true);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.error || "Upload failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
   
   const handleReset = () => {
     setFile(null);
     setHash("");
     setLoading(false);
+    setSuccess(false);
   };
 
   const handleDownloadHash = () => {
@@ -57,148 +72,147 @@ function UploadPage({ token, onLogout }) {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        minHeight: "80vh",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "linear-gradient(to right, #6a11cb, #2575fc)",
         padding: 2,
       }}
     >
       <Paper
-        elevation={12}
+        elevation={0}
         sx={{
           padding: { xs: 3, sm: 5 },
-          maxWidth: 550,
+          maxWidth: 600,
           width: "100%",
           textAlign: "center",
-          borderRadius: 4,
-          background: "#f5f5ff",
-          boxShadow: "0 15px 30px rgba(0,0,0,0.15)",
+          borderRadius: 8,
+          background: "linear-gradient(135deg, #ffffff 0%, #f8faff 100%)",
+          border: "1px solid #e0e6ed",
         }}
       >
         <Typography
           variant="h3"
           sx={{
-            fontWeight: "bold",
+            fontWeight: 800,
             color: "#2575fc",
-            marginBottom: 3,
-            textShadow: "1px 1px 2px #aaa",
-          }}
-        >
-          Upload & Verify Document
-        </Typography>
-
-        <Typography variant="subtitle1" sx={{ color: "#555", marginBottom: 4 }}>
-          Select a document to generate its secure SHA-256 hash and verify integrity.
-        </Typography>
-
-        {/* Upload Button */}
-        <Button
-          variant="contained"
-          component="label"
-          startIcon={<CloudUploadIcon />}
-          sx={{
-            background: "linear-gradient(to right, #6a11cb, #2575fc)",
-            color: "#fff",
-            fontWeight: "bold",
-            paddingX: 3,
-            paddingY: 1.5,
             marginBottom: 2,
-            borderRadius: 3,
-            transition: "transform 0.2s",
-            "&:hover": {
-              background: "linear-gradient(to right, #2575fc, #6a11cb)",
-              transform: "scale(1.05)",
-            },
+            letterSpacing: "-0.5px"
           }}
         >
-          Select File
-          <input type="file" hidden onChange={handleFileChange} />
-        </Button>
+          Secure Upload
+        </Typography>
 
-        {file && (
-          <Typography
-            sx={{
-              marginBottom: 3,
-              fontWeight: "medium",
-              color: "#333",
-              wordBreak: "break-word",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 1,
-            }}
-          >
-            📄 {file.name}
-          </Typography>
+        <Typography variant="subtitle1" sx={{ color: "#666", marginBottom: 4 }}>
+          Your document will be hashed and stored in our secure verification registry.
+        </Typography>
+
+        {!success ? (
+          <>
+            <Box
+              sx={{
+                mb: 4,
+                p: 4,
+                border: "2px dashed #d1d9e6",
+                borderRadius: 4,
+                bgcolor: "#fcfdfe",
+                cursor: "pointer",
+                "&:hover": { borderColor: "#2575fc", bgcolor: "#f0f4ff" },
+              }}
+              component="label"
+            >
+              <CloudUploadIcon sx={{ fontSize: 48, color: "#2575fc", mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                {file ? file.name : "Click to select or drag and drop"}
+              </Typography>
+              <input type="file" hidden onChange={handleFileChange} />
+            </Box>
+
+            <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+              <Button
+                variant="contained"
+                onClick={handleUpload}
+                disabled={loading || !file}
+                sx={{
+                  px: 6,
+                  py: 1.5,
+                  fontWeight: "bold",
+                  borderRadius: 3,
+                  background: "linear-gradient(90deg, #2575fc, #6a11cb)",
+                }}
+              >
+                {loading ? "Processing..." : "Register Document"}
+              </Button>
+
+              <Tooltip title="Reset">
+                <IconButton color="error" onClick={handleReset} disabled={loading}>
+                  <RestartAltIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </>
+        ) : (
+          <Fade in={true}>
+            <Box sx={{ py: 2 }}>
+              <CheckCircleIcon sx={{ fontSize: 64, color: "#4caf50", mb: 2 }} />
+              <Typography variant="h5" fontWeight="bold" color="success.main" gutterBottom>
+                Registration Successful!
+              </Typography>
+              <Typography variant="body2" color="text.secondary" mb={3}>
+                Your document's integrity signature has been generated and recorded.
+              </Typography>
+
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  mb: 3,
+                  bgcolor: "#f8f9fa",
+                  borderRadius: 3,
+                  wordBreak: "break-all"
+                }}
+              >
+                <Typography variant="caption" color="text.secondary" display="block">SHA-256 HASH SIGNATURE</Typography>
+                <Typography variant="body2" fontWeight="mono">{hash}</Typography>
+              </Paper>
+
+              <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<FileDownloadIcon />}
+                  onClick={handleDownloadHash}
+                >
+                  Download Signature
+                </Button>
+                <Button variant="text" onClick={handleReset}>
+                  Upload Another
+                </Button>
+              </Box>
+            </Box>
+          </Fade>
         )}
 
-        {/* Upload & Reset Buttons */}
-        <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mb: 3 }}>
-          <Button
-            variant="contained"
-            color="success"
-            onClick={handleUpload}
-            disabled={loading || !file}
-            sx={{
-              paddingX: 4,
-              paddingY: 1.5,
-              fontWeight: "bold",
-              borderRadius: 3,
-              transition: "transform 0.2s",
-              "&:hover": { transform: "scale(1.05)" },
-            }}
-          >
-            {loading ? "Uploading..." : "Upload"}
-          </Button>
+        {loading && (
+          <Box sx={{ mt: 3 }}>
+            <LinearProgress sx={{ height: 8, borderRadius: 4 }} />
+            <Typography variant="caption" sx={{ mt: 1, display: "block" }}>Encrypting and generating proofs...</Typography>
+          </Box>
+        )}
 
-          <Tooltip title="Reset">
-            <IconButton color="error" onClick={handleReset} sx={{ fontSize: 28 }}>
-              <RestartAltIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-
-        {loading && <LinearProgress sx={{ marginBottom: 3, height: 6, borderRadius: 3 }} />}
-
-        {/* Hash Display */}
-        {hash && (
-          <Paper
-            elevation={4}
-            sx={{
-              marginTop: 3,
-              padding: 3,
-              wordBreak: "break-all",
-              background: "#f0f4ff",
-            }}
-          >
-            <Typography variant="h6" sx={{ color: "#6a11cb" }}>
-              SHA-256 Hash
-            </Typography>
-            <Typography variant="body1" sx={{ marginY: 1, color: "#333" }}>
-              {hash}
-            </Typography>
-            <Button
-              variant="outlined"
-              startIcon={<FileDownloadIcon />}
-              onClick={handleDownloadHash}
-              sx={{
-                marginTop: 1,
-                borderColor: "#6a11cb",
-                color: "#6a11cb",
-                "&:hover": { backgroundColor: "#6a11cb10" },
-              }}
-            >
-              Download Hash
-            </Button>
-          </Paper>
+        {error && (
+          <Alert severity="error" sx={{ mt: 3, borderRadius: 3 }}>
+            {error}
+          </Alert>
         )}
       </Paper>
     </Box>
   );
 }
 
+const Fade = ({ children, in: isIn }) => (
+  <div style={{ transition: "opacity 0.5s", opacity: isIn ? 1 : 0 }}>
+    {children}
+  </div>
+);
+
 export default UploadPage;
-
-

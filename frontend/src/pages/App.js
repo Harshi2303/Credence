@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
 import "./App.css";
 import DocumentVault from "./DocumentVault";
+import VerifyPage from "./VerifyPage";
+
 
 const STORAGE_KEY = "credence_registered_users";
 const DOCUMENTS_KEY = "credence_documents";
@@ -296,26 +298,9 @@ function App() {
           ) : null}
 
           {dashboardView === "verifier" ? (
-            <div className="panel-card">
-              <h2>Verifier Portal</h2>
-              <p className="subtitle">Paste a blockchain hash to validate its authenticity.</p>
-              <label htmlFor="verifyHash">Search Hash</label>
-              <input
-                id="verifyHash"
-                value={verifierHash}
-                onChange={(event) => setVerifierHash(event.target.value)}
-                placeholder="Enter SHA-256 hash"
-                type="text"
-              />
-              <button className="primary-button" onClick={handleVerifierCheck} type="button">
-                Verify Hash
-              </button>
-              {verifierResult ? <p className="status-message">{verifierResult}</p> : null}
-              <button className="secondary-button" onClick={() => setDashboardView("selection")} type="button">
-                Back to Role Selection
-              </button>
-            </div>
+            <VerifyPage onBack={() => setDashboardView("selection")} />
           ) : null}
+
         </div>
       </div>
     );
