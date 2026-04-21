@@ -2,10 +2,10 @@ import React, { useMemo, useState } from "react";
 import "./App.css";
 import DocumentVault from "./DocumentVault";
 import VerifyPage from "./VerifyPage";
+import { Box, Typography } from "@mui/material";
 
 
 const STORAGE_KEY = "credence_registered_users";
-const DOCUMENTS_KEY = "credence_documents";
 
 function App() {
   const [isLoginView, setIsLoginView] = useState(true);
@@ -14,8 +14,6 @@ function App() {
   const [fakeLoginId, setFakeLoginId] = useState("demo_user_001");
   const [activeUser, setActiveUser] = useState(null);
   const [dashboardView, setDashboardView] = useState("selection");
-  const [verifierHash, setVerifierHash] = useState("");
-  const [verifierResult, setVerifierResult] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isBusy, setIsBusy] = useState(false);
@@ -28,10 +26,6 @@ function App() {
   const clearMessages = () => {
     setStatusMessage("");
     setErrorMessage("");
-  };
-
-  const clearDashboardMessages = () => {
-    setVerifierResult("");
   };
 
   const getStoredUsers = () => {
@@ -47,17 +41,6 @@ function App() {
 
   const saveStoredUsers = (users) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-  };
-
-  const getStoredDocuments = () => {
-    const raw = localStorage.getItem(DOCUMENTS_KEY);
-    if (!raw) return [];
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
   };
 
   const requireMetaMask = () => {
@@ -178,7 +161,6 @@ function App() {
   const logout = () => {
     setActiveUser(null);
     setDashboardView("selection");
-    clearDashboardMessages();
     clearMessages();
     setStatusMessage("You have been signed out.");
   };
@@ -194,76 +176,19 @@ function App() {
     return `ID ${activeUser.id}`;
   };
 
-  const handleVerifierCheck = async () => {
-    clearMessages();
-    clearDashboardMessages();
-    const query = verifierHash.trim().toLowerCase();
-    if (!query) {
-      setErrorMessage("Enter a hash to verify.");
-      return;
-    }
-
-    try {
-      // 1. Check backend first
-      const res = await fetch("http://localhost:5000/api/documents/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hash: query }),
-      });
-      const data = await res.json();
-
-      if (data.verified) {
-        setVerifierResult(
-          `Verification result: VALID (Verified on Backend) | Time: ${new Date(
-            data.uploadedAt
-          ).toLocaleString()}`
-        );
-        return;
-      }
-
-      // 2. Fallback to local storage (for documents not yet synced or dev mode)
-      const docs = getStoredDocuments();
-      const match = docs.find((doc) => doc.hash.toLowerCase() === query);
-      if (!match) {
-        setVerifierResult("Verification result: Hash not found on-chain or backend.");
-        return;
-      }
-      setVerifierResult(
-        `Verification result: VALID (Local Vault) | File: ${match.fileName} | Owner: ${match.ownerName} | Time: ${new Date(
-          match.createdAt
-        ).toLocaleString()}`
-      );
-    } catch (error) {
-      console.error("Verification error:", error);
-      setErrorMessage("Backend verification service unavailable. Checking local vault...");
-
-      const docs = getStoredDocuments();
-      const match = docs.find((doc) => doc.hash.toLowerCase() === query);
-      if (match) {
-        setVerifierResult(
-          `Verification result: VALID (Local Fallback) | File: ${match.fileName} | Time: ${new Date(
-            match.createdAt
-          ).toLocaleString()}`
-        );
-      } else {
-        setVerifierResult("Verification result: Hash not found.");
-      }
-    }
-  };
-
   if (activeUser) {
     return (
       <div className="auth-page">
         <div className="dashboard-shell">
           <div className="dashboard-header">
             <div>
-              <h1>Credence Dashboard</h1>
-              <p className="subtitle">
-                Connected as {activeUser.name} ({getActiveIdentity()})
+              <h1 className="gradient-text" style={{ fontFamily: 'Space Grotesk', letterSpacing: '2px' }}>{"TERMINAL - ACTIVE"}</h1>
+              <p className="subtitle" style={{ color: '#94a3b8', fontWeight: 700 }}>
+                OPERATOR: {activeUser.name} {"-"} SESSION: {getActiveIdentity()}
               </p>
             </div>
             <button className="secondary-button" onClick={logout} type="button">
-              Logout
+              TERMINATE
             </button>
           </div>
 
@@ -272,19 +197,21 @@ function App() {
 
           {dashboardView === "selection" ? (
             <div className="role-grid">
-              <div className="role-card">
-                <h2>Secure Storage</h2>
-                <p>Upload and protect your documents using IPFS and Blockchain.</p>
-                <button className="primary-button" onClick={() => setDashboardView("owner")} type="button">
-                  Go to Vault
-                </button>
+              <div className="role-card" onClick={() => setDashboardView("owner")} style={{ cursor: 'pointer' }}>
+                <Typography variant="h4" sx={{ mb: 2, fontFamily: 'Space Grotesk', color: '#fff' }}>SECURE STORAGE</Typography>
+                <p style={{ color: '#94a3b8' }}>Upload and protect your documents using IPFS and Blockchain protocols.</p>
+                <Box sx={{ mt: 3, display: "flex", alignItems: "center", color: "#8b5cf6" }}>
+                  <Typography variant="button" sx={{ fontWeight: 800 }}>LAUNCH VAULT</Typography>
+                  <Box sx={{ ml: 1 }}>→</Box>
+                </Box>
               </div>
-              <div className="role-card">
-                <h2>Verify Documents</h2>
-                <p>Authenticate digital records against the blockchain.</p>
-                <button className="primary-button" onClick={() => setDashboardView("verifier")} type="button">
-                  Start Verifying
-                </button>
+              <div className="role-card" onClick={() => setDashboardView("verifier")} style={{ cursor: 'pointer' }}>
+                <Typography variant="h4" sx={{ mb: 2, fontFamily: 'Space Grotesk', color: '#fff' }}>VERIFY DOCUMENTS</Typography>
+                <p style={{ color: '#94a3b8' }}>Authenticate digital records against the blockchain mainnet instantly.</p>
+                <Box sx={{ mt: 3, display: "flex", alignItems: "center", color: "#3b82f6" }}>
+                  <Typography variant="button" sx={{ fontWeight: 800 }}>INITIALIZE READER</Typography>
+                  <Box sx={{ ml: 1 }}>→</Box>
+                </Box>
               </div>
             </div>
           ) : null}

@@ -1,9 +1,57 @@
 import React, { useEffect, useMemo, useState } from "react";
-import "./DocumentVault.css";
+import axios from "axios";
+import { 
+  Box, 
+  Typography, 
+  TextField, 
+  Select, 
+  MenuItem, 
+  FormControl, 
+  Paper,
+  IconButton,
+  Chip,
+  Button,
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
+} from "@mui/material";
+// Icons
+import HowToVoteIcon from "@mui/icons-material/HowToVote";
+import DriveEtaIcon from "@mui/icons-material/DriveEta";
+import PublicIcon from "@mui/icons-material/Public";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import FolderSharedIcon from "@mui/icons-material/FolderShared";
+import HistoryIcon from "@mui/icons-material/History";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import LaunchIcon from "@mui/icons-material/Launch";
+import ShareIcon from "@mui/icons-material/Share";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import BlockIcon from "@mui/icons-material/Block";
+import DescriptionIcon from "@mui/icons-material/Description";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import LabelIcon from "@mui/icons-material/Label";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import EditIcon from "@mui/icons-material/Edit";
 
 const DOCUMENTS_KEY = "credence_documents";
-const CATEGORIES = ["Academic", "Financial", "Identity", "Healthcare", "Aadhar", "PAN", "Voter", "Driving License", "Passport"];
+const CATEGORIES = ["Academic", "Financial", "Identity", "Healthcare", "Aadhaar Card", "PAN Card", "Voter ID", "Driving License", "Passport"];
 
+const MenuProps = {
+  PaperProps: {
+    style: {
+      backgroundColor: 'rgba(15, 10, 25, 0.95)',
+      backdropFilter: 'blur(20px)',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      color: '#fff',
+      boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+    },
+  },
+};
 
 const STATUS_OPTIONS = ["All Statuses", "Active", "Revoked", "Processing"];
 const CHAIN_EXPLORER = {
@@ -100,6 +148,7 @@ function DocumentVault({ activeUser, walletDisplay, onBack }) {
         return (
           (doc.displayName || "").toLowerCase().includes(q) ||
           (doc.fileName || "").toLowerCase().includes(q) ||
+          (doc.category || "").toLowerCase().includes(q) ||
           (doc.tag || "").toLowerCase().includes(q)
         );
       })
@@ -110,8 +159,27 @@ function DocumentVault({ activeUser, walletDisplay, onBack }) {
     const map = {};
     for (const category of CATEGORIES) map[category] = [];
     for (const doc of filteredDocuments) {
-      const key = CATEGORIES.includes(doc.category) ? doc.category : "Academic";
-      map[key].push(doc);
+      // Find exact match or default to Identity for specific documents
+      let key = "Identity";
+      if (CATEGORIES.includes(doc.category)) {
+        key = doc.category;
+      } else if (doc.category === "aadhar") {
+        key = "Aadhaar Card";
+      } else if (doc.category === "pan") {
+        key = "PAN Card";
+      } else if (doc.category === "voter") {
+        key = "Voter ID";
+      } else if (doc.category === "dl") {
+        key = "Driving License";
+      } else if (doc.category === "passport") {
+        key = "Passport";
+      }
+      
+      if (map[key]) {
+        map[key].push(doc);
+      } else {
+        map["Identity"].push(doc);
+      }
     }
     return map;
   }, [filteredDocuments]);
@@ -436,270 +504,498 @@ function DocumentVault({ activeUser, walletDisplay, onBack }) {
   };
 
   return (
-    <div className="vault-root">
-      <div className="vault-toolbar">
-        <h2>Document Management Vault</h2>
-        <div className="wallet-display">Wallet: {walletDisplay}</div>
-      </div>
+    <Box className="vault-root">
+      <Box sx={{ mb: 6, display: "flex", alignItems: "flex-start", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.1)", pb: 4 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
+          <IconButton 
+            onClick={onBack} 
+            sx={{ 
+              bgcolor: "rgba(255,255,255,0.05)", 
+              border: "1px solid rgba(255,255,255,0.1)", 
+              color: "#fff",
+              p: 1.5,
+              "&:hover": { bgcolor: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.3)" } 
+            }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
+          <Box>
+            <Typography variant="h2" className="gradient-text" sx={{ letterSpacing: 2, fontSize: { xs: "1.8rem", md: "2.4rem" }, fontFamily: 'Space Grotesk' }}>
+              DOCUMENT // VAULT
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#38bdf8", mt: 0.2, letterSpacing: 1.5, fontWeight: 700, fontSize: "0.75rem", fontFamily: "'Fira Code', monospace" }}>
+              WALLET: {walletDisplay} // ENCRYPTED_STORAGE
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
 
-      <div className="vault-controls">
-        <input
-          type="text"
+      <Box sx={{ 
+        display: "grid", 
+        gridTemplateColumns: { xs: "1fr", md: "1.5fr 1fr 1fr auto" }, 
+        gap: 2, 
+        mb: 6, 
+        bgcolor: "rgba(255,255,255,0.03)", 
+        p: 2, 
+        borderRadius: 4,
+        border: "1px solid rgba(255,255,255,0.08)"
+      }}>
+        <TextField
           placeholder="Search by name, file, or tag..."
+          variant="outlined"
+          size="small"
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.target.value)}
+          sx={{ 
+            "& .MuiOutlinedInput-root": { color: "#fff", borderRadius: 3, bgcolor: "rgba(0,0,0,0.2)" },
+            "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" }
+          }}
         />
-        <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-          <option>All Categories</option>
-          {CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-          {STATUS_OPTIONS.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-        <button className="primary-button" type="button" onClick={() => setIsUploadOpen(true)}>
-          New Upload
-        </button>
-        <button className="secondary-button" type="button" onClick={onBack}>
-          Back
-        </button>
-      </div>
+        <FormControl size="small">
+          <Select
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            MenuProps={MenuProps}
+            sx={{ color: "#fff", borderRadius: 3, bgcolor: "rgba(0,0,0,0.2)", "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" } }}
+          >
+            <MenuItem value="All Categories">All Categories</MenuItem>
+            {CATEGORIES.map((category) => (
+              <MenuItem key={category} value={category}>{category}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl size="small">
+          <Select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            MenuProps={MenuProps}
+            sx={{ color: "#fff", borderRadius: 3, bgcolor: "rgba(0,0,0,0.2)", "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" } }}
+          >
+            {STATUS_OPTIONS.map((status) => (
+              <MenuItem key={status} value={status}>{status}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Button 
+          variant="contained" 
+          onClick={() => setIsUploadOpen(true)}
+          sx={{ 
+            px: 4, 
+            borderRadius: 3, 
+            fontWeight: 800, 
+            fontFamily: "Space Grotesk",
+            background: "linear-gradient(90deg, #8b5cf6 0%, #3b82f6 100%)"
+          }}
+        >
+          NEW UPLOAD
+        </Button>
+      </Box>
 
       {message ? <p className="status-message">{message}</p> : null}
       {error ? <p className="error-message">{error}</p> : null}
 
-      {CATEGORIES.map((category) => (
-        <section key={category} className="vault-section">
-          <h3>{category}</h3>
-          <div className="vault-grid">
-            {groupedDocuments[category].length === 0 ? (
-              <div className="empty-card">No documents for this category and filter.</div>
-            ) : (
-              groupedDocuments[category].map((doc) => {
-                const hasTx = Boolean(doc.txHash);
-                const chain = doc.chainId || networkId;
-                const explorerUrl = hasTx ? `${getExplorerBase(chain)}/tx/${doc.txHash}` : "";
-                return (
-                  <article key={doc.id} className="file-card">
-                    <div className="file-card-head">
-                      <h4>{doc.displayName || doc.fileName}</h4>
-                      <span className={`status-badge ${statusClass(doc.status)}`}>{doc.status || "Active"}</span>
-                    </div>
-                    <p className="meta-line">File: {doc.fileName}</p>
-                    <p className="meta-line">Uploaded: {formatDate(doc.createdAt)}</p>
-                    <p className="meta-line">Updated: {formatDate(doc.updatedAt || doc.createdAt)}</p>
-                    <p className="meta-line">CID: {toShort(doc.cid)}</p>
-                    <p className="meta-line">Hash: {toShort(doc.hash, 10, 8)}</p>
-                    <p className="meta-line">Version: v{doc.version || 1}</p>
-                    {doc.tag ? <p className="meta-line">Tag: {doc.tag}</p> : null}
+      {CATEGORIES.map((category) => {
+        const hasDocs = groupedDocuments[category].length > 0;
+        
+        // Always hide empty categories for a cleaner "Vault" feel
+        if (!hasDocs) return null;
 
-                    <details className="audit-trail">
-                      <summary>Time-stamped audit trail ({(doc.auditTrail || []).length})</summary>
-                      <ul>
-                        {(doc.auditTrail || []).slice().reverse().map((item, idx) => (
-                          <li key={`${doc.id}_audit_${idx}`}>
-                            <span>{item.action}</span> at <span>{formatDate(item.at)}</span>
-                            {item.txHash ? ` | tx: ${toShort(item.txHash)}` : ""}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
+        return (
+          <section key={category} className="vault-section" style={{ marginBottom: '32px' }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+              <Typography variant="h4" sx={{ color: "#fff", fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.5rem" }}>{category}</Typography>
+              <Box sx={{ flexGrow: 1, height: "1px", bgcolor: "rgba(255,255,255,0.05)" }} />
+              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 800 }}>{groupedDocuments[category].length} FILES</Typography>
+            </Box>
+            <div className="vault-grid">
+              {!hasDocs ? (
+                <div className="empty-card">No documents found.</div>
+              ) : (
+                 groupedDocuments[category].map((doc) => {
+                 const hasTx = Boolean(doc.txHash);
+                 const chain = doc.chainId || networkId;
+                 const explorerUrl = hasTx ? `${getExplorerBase(chain)}/tx/${doc.txHash}` : "";
+                 return (
+                   <Paper 
+                    key={doc.id} 
+                    elevation={0}
+                    sx={{ 
+                      p: 3, 
+                      mb: 2, 
+                      borderRadius: 4, 
+                      background: "rgba(15, 10, 25, 0.4)",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                      transition: "all 0.3s",
+                      "&:hover": { background: "rgba(15, 10, 25, 0.6)", borderColor: "#8b5cf660" }
+                    }}
+                   >
+                    <Grid container spacing={3} alignItems="center">
+                      {/* Column 1: Document Identity */}
+                      <Grid item xs={12} md={3}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                          <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: "rgba(139, 92, 246, 0.1)", color: "#8b5cf6" }}>
+                            <DescriptionIcon />
+                          </Box>
+                          <Box>
+                            <Typography sx={{ color: "#fff", fontWeight: 800, fontSize: "1.1rem", fontFamily: "Space Grotesk", lineHeight: 1.2 }}>
+                              {doc.displayName || doc.fileName}
+                            </Typography>
+                            <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
+                              <Chip label={doc.status || "Active"} size="small" sx={{ height: 18, fontSize: "0.6rem", fontWeight: 900, bgcolor: "rgba(52, 211, 153, 0.1)", color: "#34d399", border: "1px solid rgba(52, 211, 153, 0.2)" }} />
+                              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700 }}>v{doc.version || 1}.0</Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                      </Grid>
 
-                    <div className="file-actions">
-                      <button className="secondary-button" type="button" onClick={() => openPreview(doc)}>
-                        Preview
-                      </button>
-                      <button className="secondary-button" type="button" onClick={() => openEditModal(doc)}>
-                        Edit
-                      </button>
-                      <button
-                        className="secondary-button"
-                        type="button"
-                        onClick={() => hasTx && window.open(explorerUrl, "_blank", "noopener,noreferrer")}
-                        disabled={!hasTx}
-                        title={!hasTx ? "Processing on-chain..." : "Open on block explorer"}
-                      >
-                        View on Blockchain
-                      </button>
-                      <button
-                        className="primary-button"
-                        type="button"
-                        onClick={() => handleShare(doc)}
-                        disabled={shareBusyId === doc.id}
-                      >
-                        {shareBusyId === doc.id ? "Sharing..." : "Share"}
-                      </button>
-                      <button
-                        className="secondary-button"
-                        type="button"
-                        onClick={() => handleRevoke(doc)}
-                        disabled={busyAction === `revoke_${doc.id}` || doc.status === "Revoked"}
-                      >
-                        {doc.status === "Revoked" ? "Revoked" : "Revoke"}
-                      </button>
-                      <button
-                        className="secondary-button danger"
-                        type="button"
-                        onClick={() => handleDeleteLocal(doc)}
-                        disabled={busyAction === `delete_${doc.id}`}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </article>
-                );
-              })
-            )}
+                      {/* Column 2: Metadata Details */}
+                      <Grid item xs={12} md={4}>
+                         <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                               <Typography sx={{ color: "#64748b", fontSize: "0.6rem", fontWeight: 900, textTransform: "uppercase" }}>Stored At</Typography>
+                               <Typography sx={{ color: "#cbd5e1", fontSize: "0.85rem", fontWeight: 600 }}>{formatDate(doc.createdAt).split(',')[0]}</Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                               <Typography sx={{ color: "#64748b", fontSize: "0.6rem", fontWeight: 900, textTransform: "uppercase" }}>Security Tag</Typography>
+                               <Typography sx={{ color: "#cbd5e1", fontSize: "0.85rem", fontWeight: 600 }}>{doc.tag || "None"}</Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                               <Box sx={{ display: "flex", justifyContent: "space-between", bgcolor: "rgba(0,0,0,0.2)", p: 0.8, borderRadius: 2, border: "1px solid rgba(255,255,255,0.03)" }}>
+                                  <Typography sx={{ color: "#94a3b8", fontSize: "0.65rem", fontFamily: "Fira Code" }}>CID: {toShort(doc.cid, 10, 8)}</Typography>
+                                  <IconButton size="small" sx={{ p: 0, color: "#64748b" }} onClick={() => { navigator.clipboard.writeText(doc.cid); setMessage("CID Copied"); }}>
+                                    <ContentCopyIcon sx={{ fontSize: 12 }} />
+                                  </IconButton>
+                               </Box>
+                            </Grid>
+                         </Grid>
+                      </Grid>
+
+                      {/* Column 3: Actions */}
+                      <Grid item xs={12} md={5}>
+                         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: { xs: "center", md: "flex-end"} }}>
+                            <Button 
+                              size="small" 
+                              startIcon={<VisibilityIcon />} 
+                              onClick={() => openPreview(doc)}
+                              sx={{ color: "#fff", bgcolor: "rgba(255,255,255,0.05)", borderRadius: 2, fontSize: "0.7rem", fontWeight: 800, "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
+                            >PREVIEW</Button>
+                            
+                            <Button 
+                              size="small" 
+                              startIcon={<EditIcon />} 
+                              onClick={() => openEditModal(doc)}
+                              sx={{ color: "#fff", bgcolor: "rgba(255,255,255,0.05)", borderRadius: 2, fontSize: "0.7rem", fontWeight: 800, "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
+                            >EDIT</Button>
+
+                            <Button 
+                              size="small" 
+                              startIcon={<LaunchIcon />} 
+                              onClick={() => hasTx && window.open(explorerUrl, "_blank")}
+                              disabled={!hasTx}
+                              sx={{ color: "#3b82f6", bgcolor: "rgba(59, 130, 246, 0.1)", borderRadius: 2, fontSize: "0.7rem", fontWeight: 800 }}
+                            >EXPLORER</Button>
+
+                            <Button 
+                              size="small" 
+                              variant="contained"
+                              startIcon={<ShareIcon />} 
+                              onClick={() => handleShare(doc)}
+                              disabled={shareBusyId === doc.id}
+                              sx={{ bgcolor: "#8b5cf6", borderRadius: 2, fontSize: "0.7rem", fontWeight: 800, "&:hover": { bgcolor: "#7c3aed"} }}
+                            >{shareBusyId === doc.id ? "..." : "SHARE"}</Button>
+
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleRevoke(doc)}
+                              disabled={busyAction === `revoke_${doc.id}` || doc.status === "Revoked"}
+                              sx={{ color: "#fca5a5", bgcolor: "rgba(239, 68, 68, 0.05)", borderRadius: 2 }}
+                            ><BlockIcon sx={{ fontSize: 20 }} /></IconButton>
+
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleDeleteLocal(doc)}
+                              disabled={busyAction === `delete_${doc.id}`}
+                              sx={{ color: "#ef4444", bgcolor: "rgba(239, 68, 68, 0.05)", borderRadius: 2 }}
+                            ><DeleteOutlineIcon sx={{ fontSize: 20 }} /></IconButton>
+                         </Box>
+                      </Grid>
+
+                      {/* Audit Trail Row (Full width) */}
+                      <Grid item xs={12}>
+                         <details className="audit-trail-simple">
+                            <summary style={{ color: "#94a3b8", fontSize: "0.65rem", fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+                              <HistoryIcon sx={{ fontSize: 14 }} /> SYSTEM AUDIT LOG ({(doc.auditTrail || []).length})
+                            </summary>
+                            <Box sx={{ mt: 1, p: 2, bgcolor: "rgba(0,0,0,0.3)", borderRadius: 2 }}>
+                               {(doc.auditTrail || []).slice().reverse().map((item, idx) => (
+                                 <Typography key={idx} sx={{ color: "#94a3b8", fontSize: "0.65rem", fontFamily: "Fira Code", mb: 0.5 }}>
+                                    <span style={{ color: "#fff"}}>{item.action}</span> {"-"} {formatDate(item.at)}
+                                 </Typography>
+                               ))}
+                            </Box>
+                         </details>
+                      </Grid>
+                    </Grid>
+                   </Paper>
+                 );
+               })
+             )}
           </div>
-        </section>
-      ))}
+          </section>
+        );
+      })}
 
-      {isUploadOpen ? (
-        <div className="modal-overlay" onClick={() => setIsUploadOpen(false)}>
-          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-            <h3>New Upload</h3>
-            <p>Generate SHA-256 hash, upload to IPFS, and log hash on smart contract (simulated).</p>
-
-            <label htmlFor="upFile">File</label>
+      {/* Portaled Modals using MUI Dialog */}
+      <Dialog 
+        open={isUploadOpen} 
+        onClose={() => setIsUploadOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: "rgba(15, 10, 25, 0.9)",
+            backdropFilter: "blur(20px)",
+            border: "1px solid rgba(139, 92, 246, 0.3)",
+            borderRadius: 6,
+            color: "#fff",
+            p: 2
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: "Space Grotesk", fontWeight: 800, fontSize: "1.8rem", background: "linear-gradient(90deg, #fff 0%, #a855f7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+          NEW UPLOAD
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "#94a3b8", mb: 3 }}>Securing documents via SHA-256 hash & Decentralized IPFS Storage.</Typography>
+          
+          <Box sx={{ 
+            p: 4, 
+            border: "2px dashed rgba(139, 92, 246, 0.3)", 
+            borderRadius: 4, 
+            textAlign: "center",
+            cursor: "pointer",
+            transition: "all 0.3s",
+            mb: 4,
+            bgcolor: uploadForm.file ? "rgba(16, 185, 129, 0.05)" : "rgba(139, 92, 246, 0.03)",
+            borderColor: uploadForm.file ? "#10b981" : "rgba(139, 92, 246, 0.3)",
+            "&:hover": { bgcolor: "rgba(139, 92, 246, 0.08)", borderColor: "#8b5cf6" }
+          }} onClick={() => document.getElementById('upFile').click()}>
+            <CloudUploadIcon sx={{ fontSize: 64, color: uploadForm.file ? "#10b981" : "#8b5cf6", mb: 2 }} />
+            <Typography variant="h6" sx={{ color: "#fff", fontWeight: 700 }}>{uploadForm.file ? uploadForm.file.name : "DROP FILE OR CLICK TO BROWSE"}</Typography>
+            <Typography variant="caption" sx={{ color: "#94a3b8" }}>Supported: PNG, JPG, PDF (Max 10MB)</Typography>
             <input
               id="upFile"
               type="file"
+              style={{ display: "none" }}
               onChange={(event) => setUploadForm((p) => ({ ...p, file: event.target.files && event.target.files[0] }))}
             />
+          </Box>
 
-            <label htmlFor="upName">Display Name</label>
-            <input
-              id="upName"
-              type="text"
-              value={uploadForm.displayName}
-              onChange={(event) => setUploadForm((p) => ({ ...p, displayName: event.target.value }))}
-              placeholder="Optional display name"
-            />
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <Typography variant="caption" sx={{ color: "#8b5cf6", mb: 1, fontWeight: 900 }}>DISPLAY NAME</Typography>
+                <TextField 
+                  fullWidth 
+                  size="small" 
+                  placeholder="e.g. Annual Report"
+                  value={uploadForm.displayName}
+                  onChange={(e) => setUploadForm(p => ({ ...p, displayName: e.target.value }))}
+                  sx={{ "& .MuiOutlinedInput-root": { color: "#fff", bgcolor: "rgba(0,0,0,0.2)", borderRadius: 3 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" } }}
+                />
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <Typography variant="caption" sx={{ color: "#8b5cf6", mb: 1, fontWeight: 900 }}>CATEGORY</Typography>
+                <Select
+                  value={uploadForm.category}
+                  onChange={(e) => setUploadForm(p => ({ ...p, category: e.target.value }))}
+                  MenuProps={MenuProps}
+                  size="small"
+                  sx={{ color: "#fff", bgcolor: "rgba(0,0,0,0.2)", borderRadius: 3, "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" } }}
+                >
+                  {CATEGORIES.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <Typography variant="caption" sx={{ color: "#8b5cf6", mb: 1, fontWeight: 900 }}>SECURITY TAG // OPTIONAL</Typography>
+                <TextField 
+                  fullWidth 
+                  size="small" 
+                  placeholder="e.g. Confidential"
+                  value={uploadForm.tag}
+                  onChange={(e) => setUploadForm(p => ({ ...p, tag: e.target.value }))}
+                  sx={{ "& .MuiOutlinedInput-root": { color: "#fff", bgcolor: "rgba(0,0,0,0.2)", borderRadius: 3 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" } }}
+                />
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 4 }}>
+          <Button onClick={() => setIsUploadOpen(false)} sx={{ color: "#94a3b8", fontWeight: 800 }}>CANCEL</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleCreate} 
+            disabled={busyAction === "create"}
+            sx={{ 
+              borderRadius: 3, 
+              px: 6, 
+              py: 1.5,
+              fontWeight: 800, 
+              background: "linear-gradient(90deg, #8b5cf6 0%, #3b82f6 100%)",
+              boxShadow: "0 10px 30px rgba(139, 92, 246, 0.4)"
+            }}
+          >
+            {busyAction === "create" ? "ENCRYPTING..." : "INITIALIZE UPLOAD"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-            <label htmlFor="upCategory">Category</label>
-            <select
-              id="upCategory"
-              value={uploadForm.category}
-              onChange={(event) => setUploadForm((p) => ({ ...p, category: event.target.value }))}
-            >
-              {CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
+      <Dialog 
+        open={isEditOpen && Boolean(selectedDoc)} 
+        onClose={() => setIsEditOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: "rgba(15, 10, 25, 0.9)",
+            backdropFilter: "blur(20px)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: 6,
+            color: "#fff",
+            p: 2
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: "Space Grotesk", fontWeight: 800, fontSize: "1.8rem" }}>
+          EDIT RECORD
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "#94a3b8", mb: 4 }}>Updating metadata for record ID: {selectedDoc?.id}</Typography>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+               <FormControl fullWidth>
+                <Typography variant="caption" sx={{ color: "#8b5cf6", mb: 1, fontWeight: 900 }}>DISPLAY NAME</Typography>
+                <TextField 
+                  fullWidth 
+                  size="small" 
+                  value={editForm.displayName}
+                  onChange={(e) => setEditForm(p => ({ ...p, displayName: e.target.value }))}
+                  sx={{ "& .MuiOutlinedInput-root": { color: "#fff", bgcolor: "rgba(0,0,0,0.2)", borderRadius: 3 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" } }}
+                />
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <Typography variant="caption" sx={{ color: "#8b5cf6", mb: 1, fontWeight: 900 }}>CATEGORY</Typography>
+                <Select
+                  value={editForm.category}
+                  onChange={(e) => setEditForm(p => ({ ...p, category: e.target.value }))}
+                  MenuProps={MenuProps}
+                  size="small"
+                  sx={{ color: "#fff", bgcolor: "rgba(0,0,0,0.2)", borderRadius: 3, "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" } }}
+                >
+                  {CATEGORIES.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+               <FormControl fullWidth>
+                <Typography variant="caption" sx={{ color: "#8b5cf6", mb: 1, fontWeight: 900 }}>TAG</Typography>
+                <TextField 
+                  fullWidth 
+                  size="small" 
+                  value={editForm.tag}
+                  onChange={(e) => setEditForm(p => ({ ...p, tag: e.target.value }))}
+                  sx={{ "& .MuiOutlinedInput-root": { color: "#fff", bgcolor: "rgba(0,0,0,0.2)", borderRadius: 3 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" } }}
+                />
+              </FormControl>
+            </Grid>
+             <Grid item xs={12}>
+               <Typography variant="caption" sx={{ color: "#fbbf24", mb: 1, display: "block", fontWeight: 900 }}>VERSION CONTROL // REPLACE FILE</Typography>
+               <Box sx={{ 
+                  p: 3, 
+                  border: "1px dashed rgba(251, 191, 36, 0.4)", 
+                  borderRadius: 4, 
+                  cursor: "pointer",
+                  "&:hover": { bgcolor: "rgba(251, 191, 36, 0.05)" }
+                }} onClick={() => document.getElementById('replaceFileEdit').click()}>
+                 <Typography variant="body1" sx={{ color: "#fff", fontWeight: 700 }}>{editForm.replaceFile ? editForm.replaceFile.name : "Select new file to create new version"}</Typography>
+                 <input
+                  id="replaceFileEdit"
+                  type="file"
+                  style={{ display: "none" }}
+                  onChange={(event) => setEditForm((p) => ({ ...p, replaceFile: event.target.files && event.target.files[0] }))}
+                />
+               </Box>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 4 }}>
+          <Button onClick={() => setIsEditOpen(false)} sx={{ color: "#94a3b8", fontWeight: 800 }}>CANCEL</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleUpdate} 
+            disabled={busyAction === `edit_${selectedDoc?.id}`}
+            sx={{ 
+              borderRadius: 3, 
+              px: 6, 
+              py: 1.5,
+              fontWeight: 800, 
+              background: "linear-gradient(90deg, #f59e0b 0%, #d97706 100%)",
+              boxShadow: "0 10px 30px rgba(245, 158, 11, 0.3)"
+            }}
+          >
+            {busyAction === `edit_${selectedDoc?.id}` ? "SAVING..." : "COMMIT CHANGES"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-            <label htmlFor="upTag">Tag</label>
-            <input
-              id="upTag"
-              type="text"
-              value={uploadForm.tag}
-              onChange={(event) => setUploadForm((p) => ({ ...p, tag: event.target.value }))}
-            />
-
-            <div className="modal-actions">
-              <button className="secondary-button" type="button" onClick={() => setIsUploadOpen(false)}>
-                Cancel
-              </button>
-              <button className="primary-button" type="button" onClick={handleCreate} disabled={busyAction === "create"}>
-                {busyAction === "create" ? "Processing..." : "Upload"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {isEditOpen && selectedDoc ? (
-        <div className="modal-overlay" onClick={() => setIsEditOpen(false)}>
-          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-            <h3>Edit Document</h3>
-            <p>Update metadata. Replacing file creates a new on-chain hash version.</p>
-
-            <label htmlFor="editName">Display Name</label>
-            <input
-              id="editName"
-              type="text"
-              value={editForm.displayName}
-              onChange={(event) => setEditForm((p) => ({ ...p, displayName: event.target.value }))}
-            />
-
-            <label htmlFor="editCategory">Category</label>
-            <select
-              id="editCategory"
-              value={editForm.category}
-              onChange={(event) => setEditForm((p) => ({ ...p, category: event.target.value }))}
-            >
-              {CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-
-            <label htmlFor="editTag">Tag</label>
-            <input
-              id="editTag"
-              type="text"
-              value={editForm.tag}
-              onChange={(event) => setEditForm((p) => ({ ...p, tag: event.target.value }))}
-            />
-
-            <label htmlFor="replaceFile">Replace File (optional)</label>
-            <input
-              id="replaceFile"
-              type="file"
-              onChange={(event) => setEditForm((p) => ({ ...p, replaceFile: event.target.files && event.target.files[0] }))}
-            />
-
-            <div className="modal-actions">
-              <button className="secondary-button" type="button" onClick={() => setIsEditOpen(false)}>
-                Cancel
-              </button>
-              <button
-                className="primary-button"
-                type="button"
-                onClick={handleUpdate}
-                disabled={busyAction === `edit_${selectedDoc.id}`}
-              >
-                {busyAction === `edit_${selectedDoc.id}` ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {previewDoc ? (
-        <div className="modal-overlay" onClick={() => setPreviewDoc(null)}>
-          <div className="modal-card preview-card" onClick={(event) => event.stopPropagation()}>
-            <h3>Preview</h3>
-            <p>{previewDoc.displayName || previewDoc.fileName}</p>
-            {previewDoc.fileDataUrl ? (
-              previewDoc.fileDataUrl.startsWith("data:image") ? (
-                <img src={previewDoc.fileDataUrl} alt={previewDoc.fileName} className="preview-image" />
-              ) : (
-                <iframe title="file-preview" src={previewDoc.fileDataUrl} className="preview-frame" />
-              )
+      <Dialog 
+        open={Boolean(previewDoc)} 
+        onClose={() => setPreviewDoc(null)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: "rgba(15, 10, 25, 0.95)",
+            backdropFilter: "blur(20px)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: 6,
+            color: "#fff",
+            p: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: "Space Grotesk", fontWeight: 800, borderBottom: "1px solid rgba(255,255,255,0.1)", mb: 2 }}>
+          {previewDoc?.displayName || previewDoc?.fileName}
+        </DialogTitle>
+        <DialogContent>
+          {previewDoc?.fileDataUrl ? (
+            previewDoc.fileDataUrl.startsWith("data:image") ? (
+              <img src={previewDoc.fileDataUrl} alt={previewDoc.fileName} style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)" }} />
             ) : (
-              <a href={previewDoc.gatewayUrl} target="_blank" rel="noreferrer">
-                Open from IPFS Gateway
-              </a>
-            )}
-            <div className="modal-actions">
-              <button className="secondary-button" type="button" onClick={() => setPreviewDoc(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
+              <iframe title="file-preview" src={previewDoc.fileDataUrl} style={{ width: "100%", minHeight: "75vh", borderRadius: 12, border: "none", background: "#fff" }} />
+            )
+          ) : (
+             <Box sx={{ p: 10, textAlign: "center" }}>
+                <Typography variant="h6" sx={{ color: "#94a3b8", mb: 3 }}>Document hosted on external gateway</Typography>
+                <Button variant="outlined" color="primary" href={previewDoc?.gatewayUrl} target="_blank" rel="noreferrer">
+                  OPEN IN BLOCKCHAIN EXPLORER
+                </Button>
+             </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setPreviewDoc(null)} variant="contained" sx={{ bgcolor: "rgba(255,255,255,0.1)", color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.2)" } }}>
+            CLOSE PREVIEW
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
 
